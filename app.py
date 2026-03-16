@@ -1,40 +1,53 @@
 import streamlit as st
 import pandas as pd
 import joblib
-import numpy as np
 
-# Load the saved assets
-model = joblib.load('weather_model.pkl')
-encoder = joblib.load('weather_encoder.pkl')
+st.set_page_config(page_title="WeatherAI Forecast", page_icon="🌤️", layout="centered")
 
-st.title("☀️ Temperature Predictor")
-st.write("Adjust the weather conditions to see the predicted Max Temperature.")
+# Load the NEW Random Forest model
+model = joblib.load('7_day_weather_model.pkl')
 
-# 1. Setup User Inputs in a Sidebar
-with st.sidebar:
-    st.header("Input Conditions")
-    temp_min = st.slider("Min Temperature (°C)", -5.0, 30.0, 10.0)
-    precipitation = st.number_input("Precipitation (mm)", 0.0, 100.0, 0.0)
-    wind = st.slider("Wind Speed", 0.0, 20.0, 5.0)
-    month = st.selectbox("Month", list(range(1, 13)))
-    weather_type = st.selectbox("Weather Type", ['drizzle', 'rain', 'sun', 'snow', 'fog'])
+st.title("🌤️ Next-Gen Weather Forecaster")
+st.markdown("Enter today's exact atmospheric conditions and the current month to generate a predictive 7-day temperature trend.")
+st.markdown("---")
 
-# 2. Preprocess the User Input
-# Create a small dataframe for the categorical encoding
-weather_input = pd.DataFrame({'weather': [weather_type]})
-weather_encoded = encoder.transform(weather_input)
-weather_encoded_df = pd.DataFrame(weather_encoded, columns=encoder.get_feature_names_out(['weather']))
+# 1. Expand to 4 columns
+col1, col2, col3, col4 = st.columns(4)
 
-# Combine all inputs into one row
+with col1:
+    temperature = st.number_input("Temp (°C)", value=15.0, step=0.5, format="%.1f")
+with col2:
+    humidity = st.number_input("Humidity (%)", value=75.0, step=1.0, format="%.1f")
+with col3:
+    wind_speed = st.number_input("Wind (m/s)", value=3.0, step=0.5, format="%.1f")
+with col4:
+    # 2. Add the Month input (Restricted between 1 and 12)
+    month = st.number_input("Month (1-12)", min_value=1, max_value=12, value=3, step=1)
+
+# 3. Add 'month' to the DataFrame so it matches the model's training data exactly
 input_data = pd.DataFrame({
-    'precipitation': [precipitation],
-    'temp_min': [temp_min],
-    'wind': [wind],
+    'temperature': [temperature],
+    'humidity': [humidity],
+    'wind_speed': [wind_speed],
     'month': [month]
 })
-final_X = pd.concat([input_data, weather_encoded_df], axis=1)
 
-# 3. Predict!
-if st.button("Predict Max Temp"):
-    prediction = model.predict(final_X)
-    st.metric("Predicted Max Temperature", f"{prediction[0]:.2f} °C")
+st.markdown("<br>", unsafe_allow_html=True)
+
+if st.button("🚀 Generate 7-Day Forecast", use_container_width=True):
+    
+    predictions = model.predict(input_data)[0] 
+    
+    st.markdown("### 📈 Predicted Weekly Trend")
+    
+    days = ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7']
+    chart_data = pd.DataFrame({
+        'Temperature (°C)': predictions
+    }, index=days)
+    
+    st.area_chart(chart_data)
+    
+    st.markdown("### 🗓️ Daily Breakdown")
+    metric_cols = st.columns(7)
+    for i, col in enumerate(metric_cols):
+        col.metric(label=f"Day {i+1}", value=f"{predictions[i]:.1f}°")
