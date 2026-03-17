@@ -1,9 +1,12 @@
 # 🌦️ Weather Prediction Model
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://uvez101-weather-prediction.streamlit.app/)
+[![Ver1](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://uvez101-weather-prediction.streamlit.app/)
+[![Ver2](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://uvez101-weather-prediction-improved.streamlit.app/)
 
 ## 🔗 Live Demo
-Check out the interactive model here: [View App](https://uvez101-weather-prediction.streamlit.app/)
+Check out the interactive model here:
+[Version 1](https://uvez101-weather-prediction.streamlit.app/)
+[Version 2](https://uvez101-weather-prediction-improved.streamlit.app/)
 
 ## 🚀 Project Overview
 This project uses **Linear Regression** to predict the daily maximum temperature based on historical data.
