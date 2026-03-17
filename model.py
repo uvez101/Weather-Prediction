@@ -1,7 +1,7 @@
 import pandas as pd
 import joblib
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
+from xgboost import XGBRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 
 print("🧠 Booting up the training sequence...")
@@ -19,7 +19,13 @@ y = df[['target_day_1', 'target_day_2', 'target_day_3',
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # 4. Train the Multi-Output Model
-model = RandomForestRegressor(n_estimators=100, random_state=42)
+model = XGBRegressor(
+    n_estimators=100, 
+    learning_rate=0.05, 
+    max_depth=3, 
+    subsample=0.7, 
+    random_state=42
+)
 model.fit(X_train, y_train)
 
 # 5. Evaluate Performance
