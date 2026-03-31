@@ -1,44 +1,53 @@
 import pandas as pd
+import requests
 
-CITY = 'Seattle' 
-print(f"🔧 Starting data prep for {CITY}...")
+CITY = "New Damietta City"
+print(f"🌍 Initiating API connection to fetch historical data for {CITY}...")
 
-# 1. Load the raw files (Make sure these are in your folder!)
-print("Loading raw CSVs (this might take a few seconds)...")
-temp = pd.read_csv('temperature.csv', parse_dates=['datetime'], index_col='datetime')
-humidity = pd.read_csv('humidity.csv', parse_dates=['datetime'], index_col='datetime')
-wind = pd.read_csv('wind_speed.csv', parse_dates=['datetime'], index_col='datetime')
-# Note: we are skipping precipitation since this Kaggle dataset doesn't have it
+# 1. Open-Meteo Historical API URL
+# Coordinates for New Damietta: Latitude 31.43, Longitude 31.68
+# We request exactly what we need: Daily Max Temp, Mean Humidity, Max Wind Speed, and Precipitation
+url = (
+    "https://archive-api.open-meteo.com/v1/archive"
+    "?latitude=31.43&longitude=31.68"
+    "&start_date=2014-01-01&end_date=2024-01-01"
+    "&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum"
+    "&timezone=Africa%2FCairo"
+)
 
-# 2. Extract just our target city
+# 2. Fetch the Data
+response = requests.get(url)
+data = response.json()
+
+# 3. Convert the JSON response directly into a Pandas DataFrame
 df = pd.DataFrame({
-    'temperature': temp[CITY],
-    'humidity': humidity[CITY],
-    'wind_speed': wind[CITY]
+    'datetime': pd.to_datetime(data['daily']['time']),
+    'temperature': data['daily']['temperature_2m_max'],     # Already the Daily High!
+    'humidity': data['daily']['relative_humidity_2m_mean'],
+    'wind_speed': data['daily']['wind_speed_10m_max'],
+    'precipitation': data['daily']['precipitation_sum']     # We finally have precipitation!
 })
 
-# 3. Convert Kelvin to Celsius
-df['temperature'] = df['temperature'] - 273.15
+# Set the date as the index
+df.set_index('datetime', inplace=True)
 
-# 4. Resample Hourly Data to Daily (taking the daily average)
-print("Converting hourly data to daily averages...")
-df_daily = df.resample('D').mean()
+# 4. Add our crucial Seasonality feature
+df['month'] = df.index.month
 
-df_daily['month'] = df_daily.index.month
+# Clean any weird API glitches
+df = df.dropna()
 
-# 5. Create the 7-Day Forecasting "Sliding Window"
+# 5. Build the 7-Day Forecasting "Sliding Window"
 print("Building the 7-day future targets...")
 for i in range(1, 8):
-    df_daily[f'target_day_{i}'] = df_daily['temperature'].shift(-i)
+    df[f'target_day_{i}'] = df['temperature'].shift(-i)
 
-# 6. Clean up missing data (NaNs)
-# This drops the last 7 days (since we can't know the future yet) 
-# and any days where sensors were broken.
-df_daily = df_daily.dropna()
+# Drop the last 7 days since the future targets will be blank
+df = df.dropna()
 
-# 7. Save the final, clean dataset!
-output_filename = f"{CITY.lower()}_forecast_ready.csv"
-df_daily.to_csv(output_filename)
+# 6. Save the final dataset
+output_filename = "damietta_forecast_ready.csv"
+df.to_csv(output_filename)
 
-print(f"✅ Success! Clean dataset saved as: {output_filename}")
-print(df_daily.head())
+print(f"✅ Success! Clean Egyptian dataset saved as: {output_filename}")
+print(df.head())
