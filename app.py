@@ -8,7 +8,7 @@ st.set_page_config(page_title="Damietta WeatherAI", page_icon="🌴", layout="ce
 # Load the NEW Damietta model
 model = joblib.load('damietta_7_day_model.pkl')
 
-st.title("🌴 New Damietta 7-Day Forecaster")
+st.title("New Mansoura 7-Day Forecaster")
 st.markdown("Enter today's exact atmospheric conditions to generate a predictive 7-day Daily High temperature trend for the Mediterranean coast.")
 st.markdown("---")
 
