@@ -2,20 +2,20 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-# Updated the theme and title
-st.set_page_config(page_title="Damietta WeatherAI", page_icon="🌴", layout="centered")
+# 1. Update Page Title and Emoji to reflect New Mansoura
+st.set_page_config(page_title="New Mansoura WeatherAI", page_icon="🌊", layout="centered")
 
-# Load the NEW Damietta model
+# Load the Damietta-trained model (Weather is identical)
 model = joblib.load('damietta_7_day_model.pkl')
 
-st.title("New Mansoura 7-Day Forecaster")
-st.markdown("Enter today's exact atmospheric conditions to generate a predictive 7-day Daily High temperature trend for the Mediterranean coast.")
+# 2. Update Header and Description
+st.title("🌊 New Mansoura 7-Day Forecaster")
+st.markdown("Enter today's atmospheric conditions to generate a predictive 7-day Daily High temperature trend for New Mansoura's coastal climate.")
 st.markdown("---")
 
-# Expand to 5 columns to fit Precipitation
+# 5 columns for inputs
 col1, col2, col3, col4, col5 = st.columns(5)
 
-# Notice the default values are now tailored to an Egyptian summer
 with col1:
     temperature = st.number_input("Temp (°C)", value=32.0, step=0.5, format="%.1f")
 with col2:
@@ -27,7 +27,6 @@ with col4:
 with col5:
     month = st.number_input("Month", min_value=1, max_value=12, value=8, step=1)
 
-# Ensure the order matches your X features in model.py EXACTLY
 input_data = pd.DataFrame({
     'temperature': [temperature],
     'humidity': [humidity],
@@ -38,8 +37,8 @@ input_data = pd.DataFrame({
 
 st.markdown("<br>", unsafe_allow_html=True)
 
+# 3. Removed st.balloons() for a faster, cleaner feel
 if st.button("🚀 Generate 7-Day Forecast", use_container_width=True):
-    st.balloons()
     
     predictions = model.predict(input_data)[0] 
     
