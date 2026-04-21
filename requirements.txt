@@ -1,5 +1,5 @@
 pandas<3.0.0
 scikit-learn==1.7.1
-xgboost
+torch
 joblib
 streamlit>=1.32.0

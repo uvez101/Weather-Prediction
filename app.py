@@ -1,19 +1,42 @@
 import streamlit as st
 import pandas as pd
 import joblib
+import torch
+import torch.nn as nn
+import numpy as np
 
-# 1. Update Page Title and Emoji to reflect New Mansoura
+# 1. Page Config
 st.set_page_config(page_title="New Mansoura WeatherAI", page_icon="🌊", layout="centered")
 
-# Load the Damietta-trained model (Weather is identical)
-model = joblib.load('damietta_7_day_model.pkl')
+# 2. Rebuild the LSTM Skeleton (Must match Colab EXACTLY)
+class WeatherLSTM(nn.Module):
+    def __init__(self, input_size=5, hidden_size=64, num_layers=2, output_size=7):
+        super(WeatherLSTM, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size, output_size)
+        
+    def forward(self, x):
+        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
+        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
+        out, _ = self.lstm(x, (h0, c0))
+        out = self.fc(out[:, -1, :])
+        return out
 
-# 2. Update Header and Description
-st.title("🌊 New Mansoura 7-Day Forecaster")
-st.markdown("Enter today's atmospheric conditions to generate a predictive 7-day Daily High temperature trend for New Mansoura's coastal climate.")
+# 3. Load the Scaler and the Model
+scaler = joblib.load('lstm_scaler.pkl')
+
+model = WeatherLSTM()
+# map_location=torch.device('cpu') ensures it runs on Streamlit's free CPU servers, even if trained on a Colab GPU!
+model.load_state_dict(torch.load('damietta_lstm_model.pth', map_location=torch.device('cpu')))
+model.eval() # Put the model in "evaluation" (prediction) mode
+
+# 4. The UI
+st.title("🌊 New Mansoura Deep Learning Forecaster")
+st.markdown("Powered by a PyTorch Long Short-Term Memory (LSTM) Neural Network. Enter today's conditions to generate a predictive 7-day trend.")
 st.markdown("---")
 
-# 5 columns for inputs
 col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
@@ -27,20 +50,20 @@ with col4:
 with col5:
     month = st.number_input("Month", min_value=1, max_value=12, value=8, step=1)
 
-input_data = pd.DataFrame({
-    'temperature': [temperature],
-    'humidity': [humidity],
-    'wind_speed': [wind_speed],
-    'precipitation': [precipitation],
-    'month': [month]
-})
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# 3. Removed st.balloons() for a faster, cleaner feel
-if st.button("🚀 Generate 7-Day Forecast", use_container_width=True):
+if st.button("🚀 Generate AI Forecast", use_container_width=True):
     
-    predictions = model.predict(input_data)[0] 
+    # 5. Prepare the inputs
+    raw_inputs = np.array([[temperature, humidity, wind_speed, precipitation, month]])
+    
+    # 6. Scale the inputs to match the neural network's training environment
+    scaled_inputs = scaler.transform(raw_inputs)
+    
+    # 7. Convert to a 3D PyTorch Tensor: [Samples=1, Time_Steps=1, Features=5]
+    tensor_inputs = torch.FloatTensor(scaled_inputs).unsqueeze(1)
+    
+    # 8. Predict!
+    with torch.no_grad():
+        predictions = model(tensor_inputs).numpy()[0]
     
     st.markdown("### 📈 Predicted Weekly Trend (Daily Highs)")
     
