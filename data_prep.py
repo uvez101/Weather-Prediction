@@ -1,17 +1,15 @@
 import pandas as pd
 import requests
 
-CITY = "New Damietta City"
-print(f"🌍 Initiating API connection to fetch historical data for {CITY}...")
+CITY = "New Mansoura"
+print(f"🌍 Initiating API connection to fetch comprehensive historical data for {CITY}...")
 
-# 1. Open-Meteo Historical API URL
-# Coordinates for New Damietta: Latitude 31.43, Longitude 31.68
-# We request exactly what we need: Daily Max Temp, Mean Humidity, Max Wind Speed, and Precipitation
+# 1. We added 'temperature_2m_min' to the API request
 url = (
     "https://archive-api.open-meteo.com/v1/archive"
     "?latitude=31.43&longitude=31.68"
     "&start_date=2014-01-01&end_date=2024-01-01"
-    "&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum"
+    "&daily=temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum"
     "&timezone=Africa%2FCairo"
 )
 
@@ -19,35 +17,37 @@ url = (
 response = requests.get(url)
 data = response.json()
 
-# 3. Convert the JSON response directly into a Pandas DataFrame
+# 3. Build the core DataFrame
 df = pd.DataFrame({
     'datetime': pd.to_datetime(data['daily']['time']),
-    'temperature': data['daily']['temperature_2m_max'],     # Already the Daily High!
+    'temp_max': data['daily']['temperature_2m_max'],     
+    'temp_min': data['daily']['temperature_2m_min'],     # <-- NEW Feature
     'humidity': data['daily']['relative_humidity_2m_mean'],
     'wind_speed': data['daily']['wind_speed_10m_max'],
-    'precipitation': data['daily']['precipitation_sum']     # We finally have precipitation!
+    'precipitation': data['daily']['precipitation_sum']  
 })
 
-# Set the date as the index
 df.set_index('datetime', inplace=True)
-
-# 4. Add our crucial Seasonality feature
 df['month'] = df.index.month
-
-# Clean any weird API glitches
 df = df.dropna()
 
-# 5. Build the 7-Day Forecasting "Sliding Window"
-print("Building the 7-day future targets...")
+# 4. THE MULTI-TASK MATRIX (Generating 28 target columns!)
+print("Building the 28-column 7-day future target matrix...")
+
+# These are the 4 variables we want the AI to predict
+target_variables = ['temp_max', 'temp_min', 'humidity', 'wind_speed']
+
 for i in range(1, 8):
-    df[f'target_day_{i}'] = df['temperature'].shift(-i)
+    for var in target_variables:
+        # This will create columns like: temp_max_day_1, humidity_day_1, etc.
+        df[f'{var}_day_{i}'] = df[var].shift(-i)
 
 # Drop the last 7 days since the future targets will be blank
 df = df.dropna()
 
-# 6. Save the final dataset
+# 5. Save the massive new dataset
 output_filename = "damietta_forecast_ready.csv"
 df.to_csv(output_filename)
 
-print(f"✅ Success! Clean Egyptian dataset saved as: {output_filename}")
-print(df.head())
+print(f"✅ Success! Omni-dataset saved as: {output_filename}")
+print(f"Total columns engineered: {len(df.columns)}")
