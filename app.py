@@ -4,6 +4,7 @@ import joblib
 import torch
 import torch.nn as nn
 import numpy as np
+import requests
 
 # 1. Page Config
 st.set_page_config(page_title="New Mansoura Omni-Forecaster", page_icon="🌊", layout="wide")
@@ -75,7 +76,7 @@ if st.button("🚀 Generate Omni-Forecast", use_container_width=True):
     st.success("✅ Multi-Task Physics Forecast Generated Successfully!")
     
     # 9. Build a Pro-Level Tabbed Dashboard
-    tab1, tab2, tab3 = st.tabs(["🌡️ Temperatures", "💧 Humidity", "💨 Wind Speed"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🌡️ Temperatures", "💧 Humidity", "💨 Wind Speed", "📡 Live Sensors"])
     
     with tab1:
         st.subheader("7-Day Temperature Range")
@@ -89,6 +90,59 @@ if st.button("🚀 Generate Omni-Forecast", use_container_width=True):
         st.subheader("7-Day Wind Gusts")
         st.bar_chart(df_preds[['Wind (km/h)']], color="#50E3C2")
         
+    # --- NEW LIVE SENSORS TAB (REST API METHOD) ---
+    with tab4:
+        st.subheader("Live Hardware Telemetry")
+        st.markdown("Real-time environmental readings securely streamed from our local station.")
+        
+        # ⚠️ PASTE YOUR ACTUAL THINGSPEAK KEYS HERE ⚠️
+        CHANNEL_ID = "3206420"
+        READ_API_KEY = "92MNDOW4LEPEPQ5E"
+        
+        try:
+            # We ask ThingSpeak for the last 50 results to build a proper table
+            url = f"https://api.thingspeak.com/channels/{CHANNEL_ID}/feeds.json?api_key={READ_API_KEY}&results=50"
+            response = requests.get(url)
+            data = response.json()
+            
+            if "feeds" in data and len(data["feeds"]) > 0:
+                # Convert the JSON feeds directly into a Pandas DataFrame
+                df_iot = pd.DataFrame(data["feeds"])
+                
+                # Convert the timestamp to a readable datetime format
+                df_iot['created_at'] = pd.to_datetime(df_iot['created_at']).dt.tz_convert('Africa/Cairo')
+                df_iot['created_at'] = df_iot['created_at'].dt.strftime('%Y-%m-%d %I:%M %p')
+                
+                # Rename the ThingSpeak fields to your 5 specific sensors
+                df_iot = df_iot.rename(columns={
+                    'created_at': 'Timestamp',
+                    'field1': 'Temperature (°C)',
+                    'field2': 'Humidity (%)',
+                    'field3': 'MQ-135 (Air Quality)',
+                    'field4': 'Sound Level',
+                    'field5': 'Rain'
+                })
+                
+                # Keep only the columns we care about (ignoring entry_id, etc.)
+                display_cols = ['Timestamp', 'Temperature (°C)', 'Humidity (%)', 'MQ-135 (Air Quality)', 'Sound Level', 'Rain']
+                # Filter to only include columns that actually exist in the data to prevent errors
+                display_cols = [col for col in display_cols if col in df_iot.columns]
+                
+                df_iot = df_iot[display_cols]
+                
+                # Sort so the newest reading is at the very top of the table
+                df_iot = df_iot.sort_values(by='Timestamp', ascending=False)
+                
+                # Display the interactive table in Streamlit
+                st.dataframe(df_iot, use_container_width=True, hide_index=True)
+                
+            else:
+                st.warning("Sensor station is currently offline or no data found.")
+                
+        except Exception as e:
+            st.error("Could not connect to the secure hardware stream. Please check your API keys.")
+
+
     # 10. The Raw Data Matrix
     st.markdown("### 🗓️ Daily Data Matrix")
     st.dataframe(df_preds.style.format("{:.1f}"), use_container_width=True)
